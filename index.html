@@ -4,10 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Карта с полигоном</title>
-    <!-- Подключаем Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.css" />
     <style>
-        /* Чтобы карта занимала всё окно */
         body {
             margin: 0;
             padding: 0;
@@ -17,11 +16,85 @@
             height: 100vh;
             width: 100%;
         }
+        .controls {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            z-index: 1000;
+            background: white;
+            padding: 10px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+        .controls button {
+            padding: 8px 16px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 14px;
+            background: #3b82f6;
+            color: white;
+            transition: all 0.2s;
+        }
+        .controls button:hover {
+            background: #2563eb;
+        }
+        .controls button.danger {
+            background: #ef4444;
+        }
+        .controls button.danger:hover {
+            background: #dc2626;
+        }
+        .controls button.success {
+            background: #22c55e;
+        }
+        .controls button.success:hover {
+            background: #16a34a;
+        }
+        .info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            z-index: 1000;
+            background: white;
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            font-size: 13px;
+            max-width: 300px;
+        }
+        .info p {
+            margin: 4px 0;
+        }
+        .info .coord {
+            color: #3b82f6;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
     <div id="map"></div>
+
+    <div class="controls">
+        <button id="fitBoundsBtn" class="success">📌 Центрировать по полигону</button>
+        <button id="editBtn">✏️ Редактировать</button>
+        <button id="saveBtn" style="display:none;">💾 Сохранить</button>
+        <button id="cancelBtn" style="display:none;" class="danger">❌ Отменить</button>
+        <button id="deleteBtn" class="danger">🗑️ Удалить полигон</button>
+        <button id="addPointBtn">➕ Добавить точку</button>
+    </div>
+    <div class="info" id="infoPanel">
+        <p><strong>📐 Информация о полигоне</strong></p>
+        <p>Точек: <span id="pointCount">0</span></p>
+        <p>Площадь: <span id="area">0</span> км²</p>
+        <p>Центр: <span id="center">—</span></p>
+    </div>
+
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
-    <script src="alg/alg1.js"></script>
+    <script src="https://unpkg.com/leaflet-draw@1.0.4/dist/leaflet.draw.js"></script>
+    <script src="alg.js"></script>
 </body>
 </html>
