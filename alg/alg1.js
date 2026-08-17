@@ -210,7 +210,7 @@ function updateInfo() {
         document.getElementById('center').textContent = '—';
         return;
     }
-    
+
     const coords = polygon.getLatLngs()[0];
     if (!coords || coords.length < 3) {
         return;
@@ -391,89 +391,6 @@ function finishPolygon(e) {
     showToast('Полигон создан!', 2000);
 }
 
-function startDrawingOnMap2() {
-    if (polygon2) {
-        showToast2('Сначала удалите полигон на карте 2!', 2000);
-        return;
-    }
-    if (isDrawingOnMap2) {
-        showToast2('Уже идет создание полигона на карте 2', 2000);
-        return;
-    }
-    polygon2Points = [];
-    isDrawingOnMap2 = true;
-    map2.getContainer().style.cursor = 'crosshair';
-    showToast2('Кликайте на карте 2 для добавления точек. Двойной клик - завершить.', 4000);
-    map2.on('click', addPointOnClickMap2);
-    map2.on('dblclick', finishPolygonMap2);
-}
-
-function addPointOnClickMap2(e) {
-    if (!isDrawingOnMap2) return;
-    const lat = e.latlng.lat;
-    const lng = e.latlng.lng;
-    const point = [lat, lng];
-    polygon2Points.push(point);
-    const marker = L.marker([lat, lng], {icon: L.divIcon({className: 'point-marker', html: '<div></div>', iconSize: [14, 14], iconAnchor: [7, 7]})}).addTo(map2);
-    markers2.push(marker);
-    const numMarker = L.marker([lat, lng], {icon: L.divIcon({className: 'point-number', html: `<div>${polygon2Points.length}</div>`, iconSize: [20, 20], iconAnchor: [10, 10]})}).addTo(map2);
-    markers2.push(numMarker);
-    if (tempPolyline2) {
-        map2.removeLayer(tempPolyline2);
-    }
-    if (polygon2Points.length > 1) {
-        tempPolyline2 = L.polyline(polygon2Points, {color: '#ef4444', weight: 3, dashArray: '8, 6', opacity: 0.8}).addTo(map2);
-    }
-}
-
-function finishPolygonMap2(e) {
-    if (!isDrawingOnMap2) return;
-    if (polygon2Points.length < 3) {
-        showToast2('Нужно минимум 3 точки для создания полигона!');
-        clearDrawingMap2();
-        return;
-    }
-    const closedPoints = [...polygon2Points, polygon2Points[0]];
-    polygon2 = L.polygon(closedPoints, {color: '#ef4444', weight: 3, fillColor: '#fca5a5', fillOpacity: 0.3}).addTo(map2);
-    polygon2.bindPopup('Полигон на карте 2 создан');
-    markers2.forEach(m => map2.removeLayer(m));
-    markers2 = [];
-    if (tempPolyline2) {
-        map2.removeLayer(tempPolyline2);
-        tempPolyline2 = null;
-    }
-    isDrawingOnMap2 = false;
-    map2.getContainer().style.cursor = '';
-    map2.off('click', addPointOnClickMap2);
-    map2.off('dblclick', finishPolygonMap2);
-    polygon2Points = [];
-    showToast2('Полигон на карте 2 создан!', 2000);
-}
-
-function clearDrawingMap2() {
-    markers2.forEach(m => map2.removeLayer(m));
-    markers2 = [];
-    if (tempPolyline2) {
-        map2.removeLayer(tempPolyline2);
-        tempPolyline2 = null;
-    }
-    polygon2Points = [];
-    isDrawingOnMap2 = false;
-    map2.getContainer().style.cursor = '';
-    map2.off('click', addPointOnClickMap2);
-    map2.off('dblclick', finishPolygonMap2);
-}
-
-function deletePolygonMap2() {
-    if (polygon2 && confirm('Удалить полигон на карте 2?')) {
-        map2.removeLayer(polygon2);
-        polygon2 = null;
-        clearDrawingMap2();
-        showToast2('Полигон на карте 2 удален', 1500);
-    } else {
-        showToast2('Нет полигона для удаления на карте 2', 1500);
-    }
-}
 
 document.getElementById('createpolyBtn').addEventListener('click', function() {
     if (polygon) {
