@@ -3,25 +3,46 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Подбор проекций</title>
+    <title>Сравнение проекций</title>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
     <link rel="stylesheet" href="css/style.css" />
 </head>
 <body>
-    <div id="map"></div>
-    <div id="toast"></div>
-    
-    <div class="controls">
-        <button id="createpolyBtn" class="success">Создать полигон</button>
-        <button id="fitBoundsBtn">Центрировать</button>
-        <button id="addPointBtn" class="warning">Добавить точку</button>
-        <button id="deleteBtn" class="danger">Удалить полигон</button>
-    </div>
-    
-    <div class="info">
-        <p><strong>Информация</strong></p>
-        <p>Точек: <span id="pointCount" class="value">0</span></p>
-        <p>Центр: <span id="center">—</span></p>
+    <div class="app-container">
+        <div class="top-section">
+            <div class="maps-container">
+                <div class="map-wrapper">
+                    <div id="map1"></div>
+                    <div id="toast1"></div>
+                    <div class="controls">
+                        <button id="createpolyBtn" class="success">Создать полигон</button>
+                        <button id="editPolygonBtn" class="warning">Редактировать</button>
+                        <button id="finishEditBtn" class="success">Завершить редактирование</button>
+                        <button id="savePolygonBtn" class="primary">Сохранить</button>
+                        <button id="fitBoundsBtn">Центрировать</button>
+                        <button id="addPointBtn" class="warning">Добавить точку</button>
+                        <button id="deleteBtn" class="danger">Удалить полигон</button>
+                    </div>
+                    <div class="info">
+                        <p><strong>Информация</strong></p>
+                        <p>Точек: <span id="pointCount" class="value">0</span></p>
+                        <p>Центр: <span id="center">—</span></p>
+                    </div>
+                </div>
+                
+                <div class="map-wrapper">
+                    <div id="map2"></div>
+                    <div id="toast2"></div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="bottom-section">
+            <div class="saved-polygons-container">
+                <h3>Сохраненные полигоны</h3>
+                <div id="savedPolygonsContainer"></div>
+            </div>
+        </div>
     </div>
 
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>

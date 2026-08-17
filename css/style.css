@@ -6,37 +6,96 @@
 
 body {
     font-family: Arial, sans-serif;
+    background: #f1f5f9;
+    height: 100vh;
     overflow: hidden;
 }
 
-#map {
+.app-container {
+    display: flex;
+    flex-direction: column;
     height: 100vh;
+    max-height: 100vh;
+    overflow: hidden;
+}
+
+.top-section {
+    flex: 1;
+    min-height: 0;
+    padding: 10px;
+}
+
+.maps-container {
+    display: flex;
+    gap: 10px;
+    height: 100%;
+}
+
+.map-wrapper {
+    position: relative;
+    flex: 1;
+    background: white;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    overflow: hidden;
+    border: 1px solid #e2e8f0;
+}
+
+.map-header {
+    position: absolute;
+    top: 0;
+    left: 0;
+    right: 0;
+    z-index: 1000;
+    background: rgba(255, 255, 255, 0.95);
+    padding: 8px 12px;
+    border-bottom: 1px solid #e2e8f0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.map-title {
+    font-weight: 600;
+    font-size: 13px;
+    color: #1e293b;
+}
+
+#map1, #map2 {
+    height: 100%;
     width: 100%;
 }
 
 .controls {
     position: absolute;
-    top: 10px;
-    right: 10px;
+    top: 8px;
+    right: 8px;
     z-index: 1000;
     background: white;
-    padding: 10px;
+    padding: 8px;
     border-radius: 8px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
     display: flex;
     flex-direction: column;
-    gap: 6px;
-    max-height: 90vh;
+    gap: 4px;
+    max-height: calc(100% - 60px);
     overflow-y: auto;
-    min-width: 160px;
+    min-width: 130px;
+}
+
+.controls-right {
+    right: 8px;
+    top: 8px;
 }
 
 .controls button {
-    padding: 8px 16px;
+    padding: 6px 12px;
     border: none;
     border-radius: 4px;
     cursor: pointer;
-    font-size: 13px;
+    font-size: 11px;
     white-space: nowrap;
     background: #3b82f6;
     color: white;
@@ -53,12 +112,6 @@ body {
     transform: translateY(0px);
 }
 
-.controls button:disabled {
-    opacity: 0.5;
-    cursor: not-allowed;
-    transform: none !important;
-}
-
 .controls button.success {
     background: #22c55e;
 }
@@ -67,36 +120,43 @@ body {
 }
 
 .controls button.danger {
-    background: #f4a02a;
+    background: #ef4444;
 }
 .controls button.danger:hover {
-    background: #efb044;
+    background: #dc2626;
 }
 
 .controls button.warning {
-    background: #3bbbf6;
+    background: #f59e0b;
 }
 .controls button.warning:hover {
-    background: #3bb8f6;
+    background: #d97706;
+}
+
+.controls button.primary {
+    background: #3b82f6;
+}
+.controls button.primary:hover {
+    background: #2563eb;
 }
 
 .info {
     position: absolute;
-    bottom: 20px;
-    left: 20px;
+    bottom: 15px;
+    left: 15px;
     z-index: 1000;
     background: white;
-    padding: 15px 20px;
+    padding: 10px 14px;
     border-radius: 8px;
     box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
-    font-size: 13px;
-    min-width: 180px;
+    font-size: 12px;
+    min-width: 140px;
     backdrop-filter: blur(4px);
     background: rgba(255, 255, 255, 0.95);
 }
 
 .info p {
-    margin: 5px 0;
+    margin: 3px 0;
 }
 
 .info .value {
@@ -104,17 +164,17 @@ body {
     font-weight: bold;
 }
 
-#toast {
+#toast1, #toast2 {
     position: absolute;
-    bottom: 100px;
+    bottom: 80px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 1000;
     background: rgba(0, 0, 0, 0.85);
     color: white;
-    padding: 12px 24px;
+    padding: 8px 16px;
     border-radius: 8px;
-    font-size: 14px;
+    font-size: 13px;
     pointer-events: none;
     transition: opacity 0.3s ease;
     opacity: 0;
@@ -123,8 +183,135 @@ body {
     font-weight: 500;
 }
 
-#toast.visible {
+#toast1.visible, #toast2.visible {
     opacity: 1;
+}
+
+.bottom-section {
+    flex: 0 0 auto;
+    max-height: 45vh;
+    padding: 5px 10px 10px 10px;
+}
+
+.saved-polygons-container {
+    background: white;
+    padding: 12px 16px;
+    border-radius: 12px;
+    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+    border: 1px solid #e2e8f0;
+    height: 100%;
+    max-height: 45vh;
+    overflow-y: auto;
+}
+
+.saved-polygons-container h3 {
+    font-size: 14px;
+    color: #1e293b;
+    margin-bottom: 10px;
+}
+
+#savedPolygonsContainer {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.empty-list {
+    text-align: center;
+    color: #94a3b8;
+    padding: 20px;
+    font-size: 13px;
+}
+
+.saved-polygon-item {
+    background: #f8fafc;
+    border: 1px solid #e2e8f0;
+    border-radius: 6px;
+    padding: 10px 12px;
+}
+
+.polygon-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+    gap: 6px;
+}
+
+.polygon-id {
+    font-weight: 600;
+    color: #3b82f6;
+    font-size: 13px;
+}
+
+.polygon-actions {
+    display: flex;
+    gap: 4px;
+}
+
+.polygon-actions button {
+    padding: 3px 10px;
+    border: none;
+    border-radius: 3px;
+    cursor: pointer;
+    font-size: 11px;
+    transition: all 0.2s;
+}
+
+.load-btn {
+    background: #22c55e;
+    color: white;
+}
+
+.load-btn:hover {
+    background: #16a34a;
+}
+
+.delete-btn {
+    background: #ef4444;
+    color: white;
+}
+
+.delete-btn:hover {
+    background: #dc2626;
+}
+
+.polygon-stats {
+    display: flex;
+    gap: 12px;
+    font-size: 11px;
+    color: #475569;
+    margin-bottom: 6px;
+    flex-wrap: wrap;
+}
+
+.polygon-coords-table {
+    overflow-x: auto;
+    margin-top: 6px;
+}
+
+.polygon-coords-table table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 11px;
+}
+
+.polygon-coords-table th {
+    background: #e2e8f0;
+    padding: 4px 8px;
+    text-align: left;
+    font-weight: 600;
+    color: #1e293b;
+}
+
+.polygon-coords-table td {
+    padding: 3px 8px;
+    border-bottom: 1px solid #e2e8f0;
+}
+
+.polygon-coords-table tr:hover td {
+    background: #f1f5f9;
 }
 
 .point-marker {
@@ -136,47 +323,6 @@ body {
     pointer-events: none !important;
 }
 
-@media (max-width: 600px) {
-    .controls {
-        top: 5px;
-        right: 5px;
-        padding: 6px;
-        min-width: 120px;
-        gap: 4px;
-    }
-    
-    .controls button {
-        font-size: 11px;
-        padding: 6px 10px;
-    }
-    
-    .info {
-        bottom: 10px;
-        left: 10px;
-        padding: 10px 14px;
-        font-size: 11px;
-        min-width: 140px;
-    }
-    
-    #toast {
-        bottom: 80px;
-        font-size: 12px;
-        padding: 8px 16px;
-    }
-}
-
-@media (max-width: 400px) {
-    .controls {
-        min-width: 90px;
-        padding: 4px;
-    }
-    
-    .controls button {
-        font-size: 10px;
-        padding: 4px 8px;
-    }
-}
-
 .drag-marker {
     z-index: 1002 !important;
 }
@@ -184,7 +330,7 @@ body {
 .drag-marker div {
     width: 18px;
     height: 18px;
-    background: #44efa5;
+    background: #f59e0b;
     border: 3px solid white;
     border-radius: 50%;
     box-shadow: 0 2px 6px rgba(0,0,0,0.4);
@@ -210,17 +356,13 @@ body {
     top: -28px;
     font-size: 12px;
     font-weight: bold;
-    color: #636b1e;
+    color: #d97706;
     text-shadow: 0 0 4px white, 0 0 4px white;
     pointer-events: none;
     background: rgba(255,255,255,0.8);
     padding: 1px 6px;
     border-radius: 10px;
-    border: 1px solid #deef44;
-}
-
-.point-marker {
-    z-index: 1000 !important;
+    border: 1px solid #f59e0b;
 }
 
 .point-marker div {
@@ -233,10 +375,6 @@ body {
     cursor: pointer;
 }
 
-.point-number {
-    z-index: 1001 !important;
-}
-
 .point-number div {
     position: relative;
     top: -22px;
@@ -244,4 +382,52 @@ body {
     font-weight: bold;
     color: #3b82f6;
     text-shadow: 0 0 4px white, 0 0 4px white;
+}
+
+@media (max-width: 768px) {
+    .top-section {
+        padding: 5px;
+    }
+    
+    .maps-container {
+        flex-direction: column;
+    }
+    
+    .bottom-section {
+        padding: 3px 5px 5px 5px;
+    }
+    
+    .controls {
+        min-width: 100px;
+        padding: 6px;
+    }
+    
+    .controls button {
+        font-size: 10px;
+        padding: 4px 8px;
+    }
+    
+    .info {
+        font-size: 10px;
+        padding: 6px 10px;
+        min-width: 100px;
+    }
+}
+
+.saved-polygons-container::-webkit-scrollbar {
+    width: 6px;
+}
+
+.saved-polygons-container::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 3px;
+}
+
+.saved-polygons-container::-webkit-scrollbar-thumb {
+    background: #94a3b8;
+    border-radius: 3px;
+}
+
+.saved-polygons-container::-webkit-scrollbar-thumb:hover {
+    background: #64748b;
 }
