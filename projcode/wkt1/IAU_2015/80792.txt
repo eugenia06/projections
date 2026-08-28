@@ -1,0 +1,3 @@
+Error: IAU_2015:80792 cannot be written as WKT1_GDAL
+ type: PROJECTED_CRS
+ name: Larissa (2015) / Ocentric / Mercator

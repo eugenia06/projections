@@ -1,0 +1,3 @@
+Error: ESRI:104644 cannot be written as WKT1_GDAL
+ type: GEOGRAPHIC_3D_CRS
+ name: California_SRS_Epoch_2017.50_(NAD83)_3D

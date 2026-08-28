@@ -1,0 +1,3 @@
+Error: IAU_2015:200043391 cannot be written as WKT1_GDAL
+ type: PROJECTED_CRS
+ name: Eros (2015) / Ographic / Mercator

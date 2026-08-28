@@ -1,0 +1,3 @@
+Error: IAU_2015:69992 cannot be written as WKT1_GDAL
+ type: PROJECTED_CRS
+ name: Saturn (2015) / Ocentric / Mercator

@@ -1,0 +1,3 @@
+Error: ESRI:104613 cannot be written as WKT1_GDAL
+ type: GEOGRAPHIC_3D_CRS
+ name: EUREF_FIN_3D

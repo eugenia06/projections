@@ -1,0 +1,3 @@
+Error: IAU_2015:39991 cannot be written as WKT1_GDAL
+ type: PROJECTED_CRS
+ name: Earth (2015) / Ographic / Mercator

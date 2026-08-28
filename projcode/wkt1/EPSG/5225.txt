@@ -1,0 +1,3 @@
+Error: EPSG:5225 cannot be written as WKT1_GDAL
+ type: PROJECTED_CRS
+ name: S-JTSK/05 (Ferro) / Modified Krovak East North

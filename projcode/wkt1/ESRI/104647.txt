@@ -1,0 +1,3 @@
+Error: ESRI:104647 cannot be written as WKT1_GDAL
+ type: GEOGRAPHIC_3D_CRS
+ name: ONGD17_3D
