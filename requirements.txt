@@ -1,0 +1,2 @@
+pyproj==3.6.0
+IPython==8.17.2

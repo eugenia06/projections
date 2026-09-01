@@ -442,3 +442,84 @@ body {
 .saved-polygons-container::-webkit-scrollbar-thumb:hover {
     background: #64748b;
 }
+#map {
+    height: 600px;
+    width: 100%;
+}
+
+body {
+    margin: 0;
+    padding: 0;
+    font-family: Arial, sans-serif;
+}
+
+.info {
+    color: rgba(59, 39, 99, 1);
+    position: absolute;
+    top: 5px;
+    right: 5px;
+    background: rgba(221, 255, 135, 0.7);
+    padding: 8px 12px;
+    z-index: 2;
+    border-radius: 4px;
+    font-family: monospace;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+}
+
+.legend {
+    position: absolute;
+    bottom: 30px;
+    left: 10px;
+    background: rgba(255, 255, 255, 0.9);
+    padding: 10px;
+    border-radius: 4px;
+    z-index: 2;
+    font-size: 12px;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+    border: 1px solid #ccc;
+}
+
+.legend div {
+    margin: 4px 0;
+}
+
+.color-box {
+    display: inline-block;
+    width: 20px;
+    height: 10px;
+    margin-right: 5px;
+    border-radius: 2px;
+}
+
+.color-box.blue {
+    background: rgba(0, 0, 255, 0.5);
+    border: 1px solid blue;
+}
+
+.color-box.red {
+    background: rgba(255, 0, 0, 0.3);
+    border: 1px solid red;
+}
+
+.color-box.green {
+    background: rgba(221, 255, 135, 0.7);
+    border: 1px solid rgba(59, 39, 99, 0.9);
+}
+
+.ol-scale-line {
+    background: rgba(0,0,0,0.5);
+}
+
+@media (max-width: 768px) {
+    #map {
+        height: 400px;
+    }
+    .info {
+        font-size: 12px;
+        padding: 4px 8px;
+    }
+    .legend {
+        font-size: 10px;
+        padding: 6px 8px;
+    }
+}
