@@ -1,76 +1,171 @@
 import json, re
 from pathlib import Path
-from pyproj import CRS
 
 def parse_wkt(t):
     p = {}
-    for k, r in {'name':r'PROJCRS\["([^"]+)"','epsg':r'ID\["EPSG",(\d+)\]','ellipsoid':r'ELLIPSOID\["([^"]+)",([^,]+),([^,]+)','method':r'METHOD\["([^"]+)"','cm':r'PARAMETER\["Longitude of natural origin",([^,]+)','sp':r'PARAMETER\["Latitude of natural origin",([^,]+)','sf':r'PARAMETER\["Scale factor at natural origin",([^,]+)','fe':r'PARAMETER\["False easting",([^,]+)','fn':r'PARAMETER\["False northing",([^,]+)','scope':r'SCOPE\["([^"]+)"','area':r'AREA\["([^"]+)"','units':r'LENGTHUNIT\["([^"]+)"'}.items():
-        m = re.search(r, t)
+    patterns = [
+        (r'PROJCRS\["([^"]+)"', 'Имя'),
+        (r'GEOGCRS\["([^"]+)"', 'Имя'),
+        (r'GEODCRS\["([^"]+)"', 'Имя'),
+        (r'VERTCRS\["([^"]+)"', 'Имя'),
+        (r'DATUM\["([^"]+)"', 'Датум'),
+        (r'ELLIPSOID\["([^"]+)",([^,]+),([^,]+)', 'Эллипсоид'),
+        (r'METHOD\["([^"]+)"', 'Математическая модель'),
+        (r'PROJECTION\["([^"]+)"', 'Математическая модель'),
+        (r'PARAMETER\["Longitude of natural origin",([^,]+)', 'Главный меридиан'),
+        (r'PARAMETER\["central_meridian",([^,]+)', 'Главный меридиан'),
+        (r'PARAMETER\["Latitude of natural origin",([^,]+)', 'Главная параллель'),
+        (r'PARAMETER\["latitude_of_origin",([^,]+)', 'Главная параллель'),
+        (r'PARAMETER\["Scale factor at natural origin",([^,]+)', 'Масштабный коэффициент'),
+        (r'PARAMETER\["scale_factor",([^,]+)', 'Масштабный коэффициент'),
+        (r'PARAMETER\["False easting",([^,]+)', 'Ложное смещение по X'),
+        (r'PARAMETER\["false_easting",([^,]+)', 'Ложное смещение по X'),
+        (r'PARAMETER\["False northing",([^,]+)', 'Ложное смещение по Y'),
+        (r'PARAMETER\["false_northing",([^,]+)', 'Ложное смещение по Y'),
+        (r'SCOPE\["([^"]+)"', 'Сфера применения'),
+        (r'AREA\["([^"]+)"', 'Территория'),
+        (r'VDATUM\["([^"]+)"', 'Датум'),
+        (r'LENGTHUNIT\["([^"]+)"', 'Единицы измерения'),
+        (r'CS\[[^,]+,(\d+)\]', 'Размерность'),
+        (r'BBOX\[([^\]]+)\]', 'Границы'),
+        (r'AUTHORITY\["EPSG",(\d+)\]', 'EPSG'),
+        (r'AUTHORITY\["ESRI",(\d+)\]', 'ESRI'),
+    ]
+    
+    for pattern, key in patterns:
+        m = re.search(pattern, t)
         if m:
-            p[k] = f"{m.group(1)}°" if k in ['cm','sp'] else f"{m.group(1)} м" if k in ['fe','fn'] else f"{m.group(1)} (a={m.group(2)}, 1/f={m.group(3)})" if k=='ellipsoid' else m.group(1)
-    b = re.search(r'BBOX\[([^\]]+)\]', t)
-    if b:
-        v = b.group(1).split(','); p['bbox'] = f"{v[0].strip()}°, {v[1].strip()}°, {v[2].strip()}°, {v[3].strip()}°"
+            if key == 'Эллипсоид':
+                p[key] = [m.group(1), float(m.group(2)), float(m.group(3))]
+            elif key in ['Главный меридиан', 'Главная параллель']:
+                p[key] = float(m.group(1))
+            elif key == 'Масштабный коэффициент':
+                p[key] = float(m.group(1))
+            elif key in ['Ложное смещение по X', 'Ложное смещение по Y']:
+                p[key] = float(m.group(1))
+            elif key == 'Границы':
+                vals = m.group(1).split(',')
+                p[key] = [float(v.strip()) for v in vals]
+            elif key == 'Размерность':
+                p[key] = m.group(1)
+            else:
+                p[key] = m.group(1)
+    
+    if 'PROJCRS' in t:
+        p['Тип'] = 'Общий'
+    elif 'GEOGCRS' in t:
+        p['Тип'] = 'Географическая'
+    elif 'GEODCRS' in t:
+        p['Тип'] = 'Геоцентрическая'
+    elif 'VERTCRS' in t:
+        p['Тип'] = 'Вертикальная'
+    else:
+        p['Тип'] = 'Локальная'
+    
+    axes = re.findall(r'AXIS\["([^"]+)",([^\]]+)\]', t)
+    if axes:
+        p['Оси'] = [a[0] for a in axes]
+    
     return p
 
-def parse(f):
-    t = open(f, encoding='utf-8').read()
-    d = parse_wkt(t)
+def parse_file(file_path):
     try:
-        c = CRS.from_string(t); j = c.to_json_dict()
-        def gp(n):
-            for x in j.get('conversion',{}).get('parameters',[]):
-                if n in x.get('name','').lower(): return x.get('value')
-        e = c.to_epsg() or d.get('epsg') or f.stem
-        try: p4 = c.to_proj4()
-        except: p4 = '—'
+        with open(file_path, 'r', encoding='utf-8') as f:
+            content = f.read()
+        d = parse_wkt(content)
+        code = file_path.stem
+        source = 'EPSG' if 'EPSG' in str(file_path) else 'ESRI'
         return {
-            'code': e, 'EPSG': e, 'Имя': c.name or d.get('name','—'),
-            'Эллипсоид': d.get('ellipsoid') or (lambda: (lambda e: f"{e.get('name')} (a={e.get('semi_major_axis')}, 1/f={e.get('inverse_flattening')})" if e else None)(j.get('base_crs',{}).get('datum',{}).get('ellipsoid')))() or '—',
-            'Главный меридиан': d.get('cm') or (f"{gp('longitude of natural origin')}°" if gp('longitude of natural origin') else '—'),
-            'Главная параллель': d.get('sp') or (f"{gp('latitude of natural origin')}°" if gp('latitude of natural origin') else '—'),
-            'Масштабный коэффициент': d.get('sf') or str(gp('scale factor')) if gp('scale factor') else '—',
-            'Ложное смещение по X': d.get('fe') or (f"{gp('false easting')} м" if gp('false easting') else '—'),
-            'Ложное смещение по Y': d.get('fn') or (f"{gp('false northing')} м" if gp('false northing') else '—'),
-            'Математическая модель': d.get('method') or j.get('conversion',{}).get('method',{}).get('name','—'),
-            'Сфера применения': d.get('scope') or j.get('scope','—'),
-            'Территория': d.get('area') or (j.get('area',{}).get('name') if isinstance(j.get('area'), dict) else j.get('area','—')),
-            'Границы': d.get('bbox') or (lambda b: f"{b.get('south_latitude')}°, {b.get('west_longitude')}°, {b.get('north_latitude')}°, {b.get('east_longitude')}°" if b else None)(j.get('bbox') or j.get('usage',{}).get('bbox')) or '—',
-            'Единицы измерения': d.get('units') or (lambda u: u.get('name') if isinstance(u,dict) else str(u) if u else None)(next((a.get('unit') for a in j.get('coordinate_system',{}).get('axis',[]) if 'unit' in a), None)) or '—',
-            'proj4': p4
+            'code': code,
+            'source': source,
+            'Имя': d.get('Имя', '—'),
+            'Тип': d.get('Тип', '—'),
+            'Датум': d.get('Датум', '—'),
+            'Эллипсоид': d.get('Эллипсоид', '—'),
+            'Главный меридиан': d.get('Главный меридиан', '—'),
+            'Главная параллель': d.get('Главная параллель', '—'),
+            'Масштабный коэффициент': d.get('Масштабный коэффициент', '—'),
+            'Ложное смещение по X': d.get('Ложное смещение по X', '—'),
+            'Ложное смещение по Y': d.get('Ложное смещение по Y', '—'),
+            'Математическая модель': d.get('Математическая модель', '—'),
+            'Сфера применения': d.get('Сфера применения', '—'),
+            'Территория': d.get('Территория', '—'),
+            'Границы': d.get('Границы', '—'),
+            'Единицы измерения': d.get('Единицы измерения', '—'),
+            'Размерность': d.get('Размерность', '—'),
+            'Оси': d.get('Оси', '—'),
         }
-    except:
-        return {k: d.get(k,'—') for k in ['code','epsg','name','ellipsoid','method','cm','sp','sf','fe','fn','scope','area','units']} | {'bbox': d.get('bbox','—'), 'proj4': '—'}
+    except Exception as e:
+        return None
 
-def collect(f='.'):
-    data = {}
-    files = list(Path(f).rglob('*.txt'))
-    print(f"Найдено {len(files)} файлов")
-    for fp in files:
-        try:
-            r = parse(fp)
-            code = str(r.get('code') or fp.stem)
-            if not code.isdigit(): code = fp.stem
-            data[code] = {'name': r.get('Имя',''), 'method': r.get('Математическая модель','—'), 'area': r.get('Территория','—'), 'proj4': r.get('proj4',''), 'source': fp.name, 'info': r}
-        except Exception as e: print(f'{fp.name}: {e}')
-    return data
+def collect_folders(folders):
+    all_data, total_files, errors, duplicates = {}, 0, 0, 0
+    print('В папках:')
+    for folder in folders:
+        path = Path(folder)
+        files = list(path.rglob('*.txt'))
+        print(f"{folder}: найдено {len(files)} кодов")
+        total_files += len(files)
+        for fp in files:
+            try:
+                r = parse_file(fp)
+                if r:
+                    code = r['code']
+                    if code in all_data:
+                        if r['source'] == 'EPSG' and all_data[code]['source'] == 'ESRI':
+                            all_data[code] = r
+                            duplicates += 1
+                        else:
+                            new_code = f"{code}_{r['source']}"
+                            all_data[new_code] = r
+                    else:
+                        all_data[code] = r
+                else:
+                    errors += 1
+            except Exception:
+                errors += 1
+    print(f"\nОбработано: {len(all_data)} из {total_files}")
+    print(f"Ошибок: {errors}")
+    print(f"Дублей: {duplicates}")
+    return all_data
 
 def save(data, o='data.json'):
-    keys = sorted([k for k in data.keys() if k.isdigit()], key=lambda x: int(x)) + sorted([k for k in data.keys() if not k.isdigit()])
-    json.dump({k: data[k] for k in keys}, open(o,'w',encoding='utf-8'), ensure_ascii=False, indent=2)
+    def sort_key(k):
+        try:
+            return int(k.split('_')[0]) 
+        except:
+            return 0
+    sorted_keys = sorted(data.keys(), key=sort_key)
+    sorted_data = {k: data[k] for k in sorted_keys}
+    
+    json.dump(sorted_data, open(o, 'w', encoding='utf-8'), ensure_ascii=False, indent=2)
     print(f'Сохранено в {o}')
+    print(f'\nИТОГО')
+    print(f"Всего: {len(data)}")
 
 def main():
-    data = collect('projcode/wkt2/EPSG')
+    folders = ['projcode/wkt2/EPSG', 'projcode/wkt2/ESRI']
+    data = collect_folders(folders)
     save(data)
-    print(f'\nОбработано: {len(data)}')
-    if data:
-        for code in data:
-            if data[code]['method'] != '—':
-                print(f'\nПример EPSG:{code}')
-                for k,v in data[code]['info'].items():
-                    if v and v != '—': print(f"  {k}: {v}")
-                break
+    
+    sources = {}
+    for d in data.values():
+        s = d.get('source', 'Неизвестный')
+        sources[s] = sources.get(s, 0) + 1
+    
+    for s, count in sorted(sources.items()):
+        print(f"{s}: {count}")
+    
+    print('\nПо типу:')
+    types = {}
+    for d in data.values():
+        t = d.get('Тип', 'Неизвестный')
+        types[t] = types.get(t, 0) + 1
+    for t, count in sorted(types.items()):
+        print(f"{t}: {count}")
+        
+    #for i, (code, d) in enumerate(list(data.items())[:10], 1000):
+    #    print(f"Пример: {code} [{d['source']}]: {d['Имя']}")
 
 if __name__ == '__main__':
     main()
