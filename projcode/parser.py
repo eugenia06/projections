@@ -65,7 +65,6 @@ def parse_wkt(t):
     axes = re.findall(r'AXIS\["([^"]+)",([^\]]+)\]', t)
     if axes:
         p['Оси'] = [a[0] for a in axes]
-    
     return p
 
 def parse_file(file_path):
@@ -163,7 +162,6 @@ def main():
         types[t] = types.get(t, 0) + 1
     for t, count in sorted(types.items()):
         print(f"{t}: {count}")
-        
     #for i, (code, d) in enumerate(list(data.items())[:10], 1000):
     #    print(f"Пример: {code} [{d['source']}]: {d['Имя']}")
 
