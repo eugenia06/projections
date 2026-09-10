@@ -8,6 +8,7 @@ def parse_wkt(t):
         (r'GEOGCRS\["([^"]+)"', 'Имя'),
         (r'GEODCRS\["([^"]+)"', 'Имя'),
         (r'VERTCRS\["([^"]+)"', 'Имя'),
+        (r'VDATUM\["([^"]+)"', 'Высотная система'),        
         (r'DATUM\["([^"]+)"', 'Датум'),
         (r'ELLIPSOID\["([^"]+)",([^,]+),([^,]+)', 'Эллипсоид'),
         (r'METHOD\["([^"]+)"', 'Математическая модель'),
@@ -159,6 +160,31 @@ def main():
     types = {}
     for d in data.values():
         t = d.get('Тип', 'Неизвестный')
+        types[t] = types.get(t, 0) + 1
+    for t, count in sorted(types.items()):
+        print(f"{t}: {count}")
+       
+    print('\nПо эллипсоиду:')
+    ellipsoid_counts = {}
+    for d in data.values():
+        e = d.get('Эллипсоид')
+        if e and e != '—' and isinstance(e, list) and len(e) > 0:
+            name = f"{e[0]}:{e[1]}:{e[2]}" 
+            ellipsoid_counts[name] = ellipsoid_counts.get(name, 0) + 1
+        elif e and e != '—':
+            ellipsoid_counts[e] = ellipsoid_counts.get(e, 0) + 1
+        else:
+            name = f"Нет эллипсоида:-:-" 
+            ellipsoid_counts[name] = ellipsoid_counts.get(name, 0) + 1
+            
+    
+    for name, count in sorted(ellipsoid_counts.items(), key=lambda x: x[1], reverse=True):
+        print(f"{name}: {count}")  
+    
+    print('\nПо сфере применения:')
+    types = {}
+    for d in data.values():
+        t = d.get('Сфера применения', 'Неизвестный')
         types[t] = types.get(t, 0) + 1
     for t, count in sorted(types.items()):
         print(f"{t}: {count}")
