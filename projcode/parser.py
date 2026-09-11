@@ -188,6 +188,13 @@ def main():
         types[t] = types.get(t, 0) + 1
     for t, count in sorted(types.items()):
         print(f"{t}: {count}")
+    print('\nПо математической модели:')
+    types = {}
+    for d in data.values():
+        t = d.get('Математическая модель', 'Неизвестный')
+        types[t] = types.get(t, 0) + 1
+    for t, count in sorted(types.items()):
+        print(f"{t}: {count}")
     #for i, (code, d) in enumerate(list(data.items())[:10], 1000):
     #    print(f"Пример: {code} [{d['source']}]: {d['Имя']}")
 
