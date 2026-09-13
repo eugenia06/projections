@@ -1,23 +1,26 @@
-const table = new Table('#tableContainer', {
-    data: myData,
-    columns: [ 
-    { name: 'name', title: 'Employee Name', sortable: true },
-    { name: 'department', title: 'Department', sortable: true },
-    { name: 'salary', title: 'Salary', sortType: 'number', format: 'currency', currency: 'USD' },
-    { name: 'joinDate', title: 'Join Date', sortType: 'date', format: 'date' }
-    ],
-    pagination: {
-    enabled: true,
-    pageSize: 10
-    },
-    sorting: {
-    enabled: true
-    },
-    filtering: {
-    enabled: true
-    },
-    selection: {
-    enabled: true,
-    mode: 'multi',
-    dataIdKey: 'id'
-    }});
+fetch('data.json')
+  .then(response => {
+      if (!response.ok) throw new Error('HTTP ' + response.status);
+      return response.json();
+  })
+  .then(products => {
+      let placeholder = document.querySelector('#data-output');
+      let out = "";
+      for (let product of Object.values(products)) {
+          out += `
+              <tr>
+                  <td>${product.code}</td>
+                  <td>${product.source}:${product.code}</td>
+                  <td>${product.name}</td>
+                  <td>${product.ellipsoid[0]}</td>
+                  <td>${product.MathModel}</td>
+                  <td>${product.Primenenie}</td>
+                  <td>${product.Place}</td>
+              </tr>
+          `;
+      }
+      placeholder.innerHTML = out;
+  })
+.catch(function(error){
+    console.error('Ошибка загрузки данных:', error);
+});

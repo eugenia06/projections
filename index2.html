@@ -1,30 +1,28 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <link rel="stylesheet" href="./node_modules/tablixjs/dist/tablixjs.css">
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<link rel="stylesheet" href="css/style2.css">
+	<title>Все проекции</title>
 </head>
 <body>
-  <div id="my-table"></div>
-  <script src="./node_modules/tablixjs/dist/tablixjs.umd.min.js"></script>
-  <script>
-    const table = new TablixJS.Table('#my-table', {
-      data: [
-        { id: 1, name: 'John Doe', email: 'john@example.com', role: 'Admin' },
-        { id: 2, name: 'Jane Smith', email: 'jane@example.com', role: 'User' },
-        { id: 3, name: 'Bob Johnson', email: 'bob@example.com', role: 'Editor' }
-      ],
-      columns: [
-        { name: 'id', title: 'ID', width: '60px' },
-        { name: 'name', title: 'Full Name' },
-        { name: 'email', title: 'Email Address' },
-        { 
-          name: 'role', 
-          title: 'User Role',
-          renderer: (value) => `<span class="role-badge role-${value.toLowerCase()}">${value}</span>`
-        }
-      ]
-    });
-  </script>
+	<table>
+		<thead>
+			<tr>
+				<th>Код проекции</th>
+				<th>Полный код</th>
+				<th>Название проекции</th>
+				<th>Эллипсоид</th>
+				<th>Математическая модель</th>
+				<th>Сфера применения</th>
+				<th>Территория</th>
+			</tr>
+		</thead>
+		<tbody id="data-output">
+		</tbody>
+	</table>
+
+	<script src="alg/alg2.js"></script> 
 </body>
 </html>

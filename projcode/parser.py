@@ -78,22 +78,22 @@ def parse_file(file_path):
         return {
             'code': code,
             'source': source,
-            'Имя': d.get('Имя', '—'),
-            'Тип': d.get('Тип', '—'),
-            'Датум': d.get('Датум', '—'),
-            'Эллипсоид': d.get('Эллипсоид', '—'),
-            'Главный меридиан': d.get('Главный меридиан', '—'),
-            'Главная параллель': d.get('Главная параллель', '—'),
-            'Масштабный коэффициент': d.get('Масштабный коэффициент', '—'),
-            'Ложное смещение по X': d.get('Ложное смещение по X', '—'),
-            'Ложное смещение по Y': d.get('Ложное смещение по Y', '—'),
-            'Математическая модель': d.get('Математическая модель', '—'),
-            'Сфера применения': d.get('Сфера применения', '—'),
-            'Территория': d.get('Территория', '—'),
-            'Границы': d.get('Границы', '—'),
-            'Единицы измерения': d.get('Единицы измерения', '—'),
-            'Размерность': d.get('Размерность', '—'),
-            'Оси': d.get('Оси', '—'),
+            'name': d.get('Имя', '—'),
+            'type': d.get('Тип', '—'),
+            'datum': d.get('Датум', '—'),
+            'ellipsoid': d.get('Эллипсоид', '—'),
+            'CMeridian': d.get('Главный меридиан', '—'),
+            'CParallel': d.get('Главная параллель', '—'),
+            'MaschtabKoef': d.get('Масштабный коэффициент', '—'),
+            'FalseX': d.get('Ложное смещение по X', '—'),
+            'FalseY': d.get('Ложное смещение по Y', '—'),
+            'MathModel': d.get('Математическая модель', '—'),
+            'Primenenie': d.get('Сфера применения', '—'),
+            'Place': d.get('Территория', '—'),
+            'Granica': d.get('Границы', '—'),
+            'Dlina': d.get('Единицы измерения', '—'),
+            'Ugli': d.get('Размерность', '—'),
+            'Osi': d.get('Оси', '—'),
         }
     except Exception as e:
         return None
@@ -159,7 +159,7 @@ def main():
     print('\nПо типу:')
     types = {}
     for d in data.values():
-        t = d.get('Тип', 'Неизвестный')
+        t = d.get('type', 'Неизвестный')
         types[t] = types.get(t, 0) + 1
     for t, count in sorted(types.items()):
         print(f"{t}: {count}")
@@ -167,9 +167,9 @@ def main():
     print('\nПо эллипсоиду:')
     ellipsoid_counts = {}
     for d in data.values():
-        e = d.get('Эллипсоид')
+        e = d.get('ellipsoid')
         if e and e != '—' and isinstance(e, list) and len(e) > 0:
-            name = f"{e[0]}:{e[1]}:{e[2]}" 
+            name = f"{e[0]} : {e[1]} : {e[2]}" 
             ellipsoid_counts[name] = ellipsoid_counts.get(name, 0) + 1
         elif e and e != '—':
             ellipsoid_counts[e] = ellipsoid_counts.get(e, 0) + 1
@@ -184,14 +184,14 @@ def main():
     print('\nПо сфере применения:')
     types = {}
     for d in data.values():
-        t = d.get('Сфера применения', 'Неизвестный')
+        t = d.get('Primenenie', 'Неизвестный')
         types[t] = types.get(t, 0) + 1
     for t, count in sorted(types.items()):
         print(f"{t}: {count}")
     print('\nПо математической модели:')
     types = {}
     for d in data.values():
-        t = d.get('Математическая модель', 'Неизвестный')
+        t = d.get('MathModel', 'Неизвестный')
         types[t] = types.get(t, 0) + 1
     for t, count in sorted(types.items()):
         print(f"{t}: {count}")
