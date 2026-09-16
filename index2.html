@@ -7,16 +7,52 @@
 	<title>Все проекции</title>
 </head>
 <body>
-	<table>
+
+	<input type="text" id="myInput" onkeyup="onSearchInput()" placeholder="Поиск по всем столбцам..">
+
+	<div id="filterPanel">
+		<label>
+			Эллипсоид:
+			<select id="filterEllipsoid">
+				<option value="">Шаровидный</option>
+			</select>
+		</label>
+
+		<label>
+			Математическая модель:
+			<select id="filterMathModel">
+				<option value="">Уравнение прямой</option>
+			</select>
+		</label>
+
+		<label>
+			Сфера применения:
+			<select id="filterPrimenenie">
+				<option value="">Строительство лилипутских домов</option>
+			</select>
+		</label>
+
+		<label>
+			Территория:
+			<select id="filterPlace">
+				<option value="">Подводное царство</option>
+			</select>
+		</label>
+
+		<button id="btnApply" onclick="applyFilters()">Применить</button>
+		<button id="btnReset" onclick="resetFilters()">Сбросить</button>
+	</div>
+
+	<table id="myTable">
 		<thead>
-			<tr>
-				<th>Код проекции</th>
-				<th>Полный код</th>
-				<th>Название проекции</th>
-				<th>Эллипсоид</th>
-				<th>Математическая модель</th>
-				<th>Сфера применения</th>
-				<th>Территория</th>
+			<tr class="header">
+				<th onclick="sortTable(0)">Код проекции <span class="sort-arrow"></span></th>
+				<th onclick="sortTable(1)">Полный код <span class="sort-arrow"></span></th>
+				<th onclick="sortTable(2)">Название проекции <span class="sort-arrow"></span></th>
+				<th onclick="sortTable(3)">Эллипсоид <span class="sort-arrow"></span></th>
+				<th onclick="sortTable(4)">Математическая модель <span class="sort-arrow"></span></th>
+				<th onclick="sortTable(5)">Сфера применения <span class="sort-arrow"></span></th>
+				<th onclick="sortTable(6)">Территория <span class="sort-arrow"></span></th>
 			</tr>
 		</thead>
 		<tbody id="data-output">

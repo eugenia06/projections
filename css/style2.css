@@ -1,65 +1,109 @@
-*{
-	margin: 0;
-	padding: 0;
-	box-sizing: border-box;
+#myInput {
+  background-image: url('searchicon.png');
+  background-position: 10px 12px;
+  background-repeat: no-repeat;
+  width: 100%;
+  font-size: 16px;
+  padding: 12px 20px 12px 40px;
+  border: 1px solid #ddd;
+  margin-bottom: 12px;
+  box-sizing: border-box;
 }
 
-body{
-	font-family: sans-serif;
-	min-height: 100vh;
-	color: #555;
+#filterPanel {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-end;
+  margin-bottom: 12px;
+  padding: 10px;
+  background-color: #f9f9f9;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  overflow: visible;
 }
 
-table{
-	width:  1000px;
-	margin: 30px auto;
+#filterPanel label {
+  font-size: 14px;
+  display: flex;
+  flex-direction: column;
+  width: 250px;
+  box-sizing: border-box;
 }
 
-table th{
-	padding: 10px 0;
-	background-color: #f4f4f4;
-	background-color: #dbdbdb;
-	border:  thin solid #d4d4d4;
+#filterPanel select {
+  width: 100%;
+  padding: 6px 8px;
+  font-size: 14px;
+  border: 1px solid #ddd;
+  border-radius: 4px;
+  margin-top: 4px;
+  box-sizing: border-box;
 }
 
-table td{
-	padding: 10px;
-	border:  thin solid #d4d4d4;
-	width: 18%;
-	text-align: center;
-	background-color: #fff;
+#filterPanel button {
+  width: 250px;
+  height: 36px;
+  padding: 0 16px;
+  font-size: 14px;
+  border: 1px solid #ddd;
+  background-color: #fff;
+  color: #000;
+  cursor: pointer;
+  border-radius: 4px;
+  box-sizing: border-box;
 }
 
-table img{
-	width:  70%;
+#filterPanel button:hover {
+  background-color: #f1f1f1;
 }
 
-table td.total-price{
-	font-weight: bold;
-	font-size: 22px;
-}
-table a{
-	text-decoration: none;
-	color: darkred;
-	background-color: #ffecef;
-	padding: 10px 15px;
-}
-table a:active{
-	background-color: #ccf4d6;
-	color:  green;
+#btnApply {
+  background-color: #077fff;
+  color: #ffffff;
+  border-color: #077fff;
+  font-weight: bold;
 }
 
-table select{
-	padding: 10px;
-	width:  200px;
-	font-size: 16px;
-	border: thin solid #d4d4d4;
-	background-color: transparent;
-}
-table select:focus{
-	outline: none;
+#btnApply:hover {
+  background-color: #3a7bc0;
+  color: #ffffff;
 }
 
-table img{
-	width:  60%;
+#myTable {
+  border-collapse: collapse;
+  width: 100%;
+  border: 1px solid #ddd;
+  font-size: 18px;
+}
+
+#myTable th, #myTable td {
+  text-align: left;
+  padding: 12px;
+}
+
+#myTable tr {
+  border-bottom: 1px solid #ddd;
+}
+
+#myTable tr.header {
+  background-color: #f1f1f1;
+}
+
+#myTable tr:hover {
+  background-color: #f1f1f1;
+}
+
+#myTable th {
+  cursor: pointer;
+  user-select: none;
+}
+
+#myTable th:hover {
+  background-color: #e5e5e5;
+}
+
+.sort-arrow {
+  font-size: 12px;
+  color: #666;
 }
