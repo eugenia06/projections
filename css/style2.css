@@ -1,10 +1,55 @@
+@font-face {
+  font-family: 'Zen Kaku Gothic Antique';
+  src: url('fonts/ZenKakuGothicAntique-Light.ttf') format('truetype');
+  font-weight: 300;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Zen Kaku Gothic Antique';
+  src: url('fonts/ZenKakuGothicAntique-Regular.ttf') format('truetype');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Zen Kaku Gothic Antique';
+  src: url('fonts/ZenKakuGothicAntique-Medium.ttf') format('truetype');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Zen Kaku Gothic Antique';
+  src: url('fonts/ZenKakuGothicAntique-Bold.ttf') format('truetype');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'Zen Kaku Gothic Antique';
+  src: url('fonts/ZenKakuGothicAntique-Black.ttf') format('truetype');
+  font-weight: 900;
+  font-style: normal;
+  font-display: swap;
+}
+
+body {
+  font-family: 'Zen Kaku Gothic Antique', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
 #myInput {
-  background-image: url('searchicon.png');
-  background-position: 10px 12px;
-  background-repeat: no-repeat;
-  width: 100%;
-  font-size: 16px;
-  padding: 12px 20px 12px 40px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  width: 80%;
+  font-family: inherit;
+  font-size: 14px;
+  padding: 10px 20px 10px 40px;
   border: 1px solid #ddd;
   margin-bottom: 12px;
   box-sizing: border-box;
@@ -24,6 +69,7 @@
 }
 
 #filterPanel label {
+  font-family: inherit;
   font-size: 14px;
   display: flex;
   flex-direction: column;
@@ -34,6 +80,7 @@
 #filterPanel select {
   width: 100%;
   padding: 6px 8px;
+  font-family: inherit;
   font-size: 14px;
   border: 1px solid #ddd;
   border-radius: 4px;
@@ -45,6 +92,7 @@
   width: 250px;
   height: 36px;
   padding: 0 16px;
+  font-family: inherit;
   font-size: 14px;
   border: 1px solid #ddd;
   background-color: #fff;
@@ -52,10 +100,12 @@
   cursor: pointer;
   border-radius: 4px;
   box-sizing: border-box;
+  font-weight: bold;
 }
 
 #filterPanel button:hover {
   background-color: #f1f1f1;
+  color: #81e44f;
 }
 
 #btnApply {
@@ -66,14 +116,15 @@
 }
 
 #btnApply:hover {
-  background-color: #3a7bc0;
-  color: #ffffff;
+  background-color: #f1f1f1;
+  color: #4f60e4;
 }
 
 #myTable {
   border-collapse: collapse;
   width: 100%;
   border: 1px solid #ddd;
+  font-family: inherit;
   font-size: 18px;
 }
 
