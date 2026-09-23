@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Сравнение проекций</title>
+
+    <!-- Leaflet -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
+    <!-- Стили проекта -->
+    <link rel="stylesheet" href="css/style3.css" />
+</head>
+<body>
+    <div class="app-container">
+
+        <!-- ============================================================
+             ВЕРХНЯЯ СЕКЦИЯ: ДВЕ КАРТЫ
+             ============================================================ -->
+        <div class="top-section">
+            <div class="maps-container">
+
+                <!-- ---------- КАРТА 1 ---------- -->
+                <div class="map-wrapper">
+                    <div class="projection-panel">
+                        <div class="projection-row">
+                            <label for="projection1">Проекция 1:</label>
+                            <input type="text" id="projectionSearch1" class="projection-search"
+                                   placeholder="Поиск: код, название, регион…" />
+                            <select id="projection1"></select>
+                        </div>
+                        <div class="projection-info" id="projectionInfo1"></div>
+                    </div>
+
+                    <div id="map1"></div>
+                    <div id="toast1" class="toast"></div>
+
+                    <div class="controls">
+                        <button id="createpolyBtn" class="success">Создать полигон</button>
+                        <button id="editPolygonBtn" class="warning">Редактировать</button>
+                        <button id="finishEditBtn" class="success">Завершить редактирование</button>
+                        <button id="fitBoundsBtn">Центрировать</button>
+                        <button id="addPointBtn" class="warning">Добавить точку</button>
+                        <button id="deleteBtn" class="danger">Удалить полигон</button>
+                    </div>
+                </div>
+
+                <!-- ---------- КАРТА 2 ---------- -->
+                <div class="map-wrapper">
+                    <div class="projection-panel">
+                        <div class="projection-row">
+                            <label for="projection2">Проекция 2:</label>
+                            <input type="text" id="projectionSearch2" class="projection-search"
+                                   placeholder="Поиск: код, название, регион…" />
+                            <select id="projection2"></select>
+                        </div>
+                        <div class="projection-info" id="projectionInfo2"></div>
+                    </div>
+
+                    <div id="map2"></div>
+                    <div id="toast2" class="toast"></div>
+                </div>
+
+            </div>
+        </div>
+
+        <!-- ============================================================
+             СЕКЦИЯ СОХРАНЕНИЯ (ПОД КАРТАМИ)
+             ============================================================ -->
+        <div class="save-section">
+            <div class="save-left">
+                <div class="info">
+                    <p><strong>Информация о полигоне</strong></p>
+                    <p>Точек: <span id="pointCount" class="value">0</span></p>
+                    <p>Центр: <span id="center">—</span></p>
+                </div>
+            </div>
+            <div class="save-right">
+                <button id="savePolygonBtn" class="primary">💾 Сохранить полигон</button>
+                <button id="clearAllBtn" class="danger">🗑 Очистить все сохранённые</button>
+            </div>
+        </div>
+
+        <!-- ============================================================
+             НИЖНЯЯ СЕКЦИЯ: СОХРАНЁННЫЕ ПОЛИГОНЫ
+             ============================================================ -->
+        <div class="bottom-section">
+            <div class="saved-polygons-container">
+                <h3>Сохранённые полигоны</h3>
+                <div id="savedPolygonsContainer"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- ============================================================
+         БИБЛИОТЕКИ
+         ============================================================ -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/proj4js/2.9.0/proj4.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/proj4leaflet@1.0.2/src/proj4leaflet.js"></script>
+
+    <!-- Основной скрипт -->
+    <script src="alg/alg3.js"></script>
+</body>
+</html>
