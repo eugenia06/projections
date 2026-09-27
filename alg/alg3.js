@@ -20,7 +20,6 @@ const ProjectionDB = (function() {
                 ? def.code
                 : `${def.source || 'EPSG'}:${def.code}`;
 
-            // ВАЖНО: приоритет WKT1 — proj4js стабильнее с ним
             def._definition = (def.WKT1 && def.WKT1 !== '-')
                 ? def.WKT1
                 : ((def.WKT2 && def.WKT2 !== '-') ? def.WKT2 : null);
@@ -84,14 +83,18 @@ const ProjectionDB = (function() {
         const projStr = def._definition;
         const resolutions = buildResolutions(def);
         const origin = buildOrigin(def, projStr);
-        const bounds = buildBounds(def, projStr);
+
+        const options = { resolutions: resolutions };
+        if (origin) options.origin = origin;
 
         try {
-            const crs = new L.Proj.CRS(def.fullCode, projStr, {
-                resolutions: resolutions,
-                origin: origin,
-                bounds: bounds
-            });
+            const crs = new L.Proj.CRS(def.fullCode, projStr, options);
+
+            const test = crs.projection.project(L.latLng(0, 0));
+            if (!test || !isFinite(test.x) || !isFinite(test.y)) {
+                throw new Error('CRS не проходит проверку project()');
+            }
+
             console.log('[createCRS]', def.fullCode, 'OK');
             return crs;
         } catch (e) {
@@ -100,18 +103,11 @@ const ProjectionDB = (function() {
         }
     }
 
+    // ЕДИНЫЙ масштабный ряд для ВСЕХ проекций.
     function buildResolutions(def) {
-        const units = (def.Dlina || '').toLowerCase();
-        const model = (def.MathModel || '').toLowerCase();
-        const isDegree = units.includes('degree') || def.type === 'Географическая';
-
         const res = [];
-        if (isDegree) {
-            for (let i = 0; i < 22; i++) res.push(0.703125 / Math.pow(2, i));
-        } else if (model.includes('mercator') && !model.includes('transverse')) {
-            for (let i = 0; i < 22; i++) res.push(156543.03392804097 / Math.pow(2, i));
-        } else {
-            for (let i = 0; i < 22; i++) res.push(1222.99245256282 / Math.pow(2, i));
+        for (let i = 0; i < 22; i++) {
+            res.push(156543.03392804097 / Math.pow(2, i));
         }
         return res;
     }
@@ -119,8 +115,13 @@ const ProjectionDB = (function() {
     function buildOrigin(def, projStr) {
         const bbox = def.Granica;
         if (!Array.isArray(bbox) || bbox.length !== 4) return undefined;
+
+        const nums = bbox.map(Number);
+        if (nums.some(v => !isFinite(v))) return undefined;
+
         try {
-            const p = proj4('EPSG:4326', projStr, [bbox[0], bbox[3]]);
+            const p = proj4('EPSG:4326', projStr, [nums[0], nums[3]]);
+            if (!p || !isFinite(p[0]) || !isFinite(p[1])) return undefined;
             return [p[0], p[1]];
         } catch (e) {
             return undefined;
@@ -130,9 +131,15 @@ const ProjectionDB = (function() {
     function buildBounds(def, projStr) {
         const bbox = def.Granica;
         if (!Array.isArray(bbox) || bbox.length !== 4) return undefined;
+
+        const nums = bbox.map(Number);
+        if (nums.some(v => !isFinite(v))) return undefined;
+
         try {
-            const p1 = proj4('EPSG:4326', projStr, [bbox[0], bbox[1]]);
-            const p2 = proj4('EPSG:4326', projStr, [bbox[2], bbox[3]]);
+            const p1 = proj4('EPSG:4326', projStr, [nums[0], nums[1]]);
+            const p2 = proj4('EPSG:4326', projStr, [nums[2], nums[3]]);
+            if (!p1 || !p2) return undefined;
+            if (![p1[0], p1[1], p2[0], p2[1]].every(isFinite)) return undefined;
             return L.bounds([p1[0], p1[1]], [p2[0], p2[1]]);
         } catch (e) {
             return undefined;
@@ -165,6 +172,9 @@ let currentCRS2 = L.CRS.EPSG3857;
 let currentProjectionCode1 = 'EPSG:3857';
 let currentProjectionCode2 = 'EPSG:3857';
 
+let graticuleLayers1 = [];
+let graticuleLayers2 = [];
+
 
 // ============================================================
 // СОЗДАНИЕ КАРТ
@@ -175,27 +185,322 @@ function createMapWithCRS(containerId, crs) {
         center: [59.5, 30],
         zoom: 7,
         zoomControl: true,
-        continuousWorld: true
+        continuousWorld: true,
+        attributionControl: false
     });
 }
 
-/**
- * Добавляет OSM-тайлы, если проекция глобальная (Web Mercator).
- * Для локальных проекций тайлы не имеют смысла — OSM отдаёт только 3857.
- */
-function addTileLayer(map, def) {
-    const bbox = def && def.Granica;
-    const isWorldWide = Array.isArray(bbox) && (bbox[2] - bbox[0]) > 180;
 
-    if (def && !isWorldWide) {
-        console.warn('[addTileLayer] локальная проекция', def.fullCode, '— OSM-тайлы отключены');
+// ============================================================
+// СЕТКА МЕРИДИАНОВ И ПАРАЛЛЕЛЕЙ (graticule)
+// ============================================================
+function addGraticule(map, def, isMap1) {
+    const oldLayers = isMap1 ? graticuleLayers1 : graticuleLayers2;
+    oldLayers.forEach(layer => {
+        try { map.removeLayer(layer); } catch (e) {}
+    });
+    const newLayers = [];
+
+    let step = 10;
+    if (def && Array.isArray(def.Granica) && def.Granica.length === 4) {
+        const nums = def.Granica.map(Number);
+        if (nums.every(isFinite)) {
+            const spanLng = Math.abs(nums[2] - nums[0]);
+            const spanLat = Math.abs(nums[3] - nums[1]);
+            const span = Math.max(spanLng, spanLat);
+            if (span < 2)        step = 0.25;
+            else if (span < 5)   step = 0.5;
+            else if (span < 15)  step = 1;
+            else if (span < 40)  step = 2;
+            else if (span < 90)  step = 5;
+            else                 step = 10;
+        }
+    }
+
+    const latMin = -80, latMax = 80;
+    const lngMin = -180, lngMax = 180;
+
+    const graticuleStyle = {
+        color: '#94a3b8',
+        weight: 1,
+        opacity: 0.6,
+        interactive: false
+    };
+
+    for (let lng = lngMin; lng <= lngMax; lng += step) {
+        const points = [];
+        for (let lat = latMin; lat <= latMax; lat += 1) {
+            points.push([lat, lng]);
+        }
+        newLayers.push(L.polyline(points, graticuleStyle).addTo(map));
+    }
+
+    for (let lat = latMin; lat <= latMax; lat += step) {
+        const points = [];
+        for (let lng = lngMin; lng <= lngMax; lng += 1) {
+            points.push([lat, lng]);
+        }
+        newLayers.push(L.polyline(points, graticuleStyle).addTo(map));
+    }
+
+    newLayers.push(L.polyline([[0, lngMin], [0, lngMax]], {
+        color: '#64748b', weight: 1.5, opacity: 0.85, interactive: false
+    }).addTo(map));
+
+    newLayers.push(L.polyline([[latMin, 0], [latMax, 0]], {
+        color: '#64748b', weight: 1.5, opacity: 0.85, interactive: false
+    }).addTo(map));
+
+    for (let lng = lngMin; lng <= lngMax; lng += step) {
+        if (lng === 0) continue;
+        newLayers.push(L.marker([latMax, lng], {
+            icon: L.divIcon({
+                className: 'graticule-label',
+                html: `<span>${lng}°</span>`,
+                iconSize: [40, 14],
+                iconAnchor: [20, 7]
+            }),
+            interactive: false
+        }).addTo(map));
+    }
+
+    for (let lat = latMin + step; lat <= latMax - step; lat += step) {
+        if (lat === 0) continue;
+        newLayers.push(L.marker([lat, lngMin], {
+            icon: L.divIcon({
+                className: 'graticule-label',
+                html: `<span>${lat}°</span>`,
+                iconSize: [40, 14],
+                iconAnchor: [20, 7]
+            }),
+            interactive: false
+        }).addTo(map));
+    }
+
+    if (isMap1) graticuleLayers1 = newLayers;
+    else        graticuleLayers2 = newLayers;
+
+    console.log('[addGraticule]', isMap1 ? 'map1' : 'map2',
+                'сетка построена, шаг =', step, '°, слоёв:', newLayers.length);
+}
+
+
+// ============================================================
+// МАСШТАБНАЯ ЛИНЕЙКА + ЗУМ (левый нижний угол)
+// ============================================================
+function addScaleDisplay(map, def, isMap1) {
+    const oldCtrl = isMap1 ? map._scaleCtrl1 : map._scaleCtrl2;
+    if (oldCtrl) {
+        try { map.removeControl(oldCtrl); } catch (e) {}
+    }
+
+    const ScaleBarControl = L.Control.extend({
+        options: { position: 'bottomleft' },
+        onAdd: function(m) {
+            const div = L.DomUtil.create('div', 'scale-bar');
+            this._div = div;
+            this._map = m;
+            this._update();
+            m.on('zoomend moveend', this._update, this);
+            return div;
+        },
+        onRemove: function(m) {
+            m.off('zoomend moveend', this._update, this);
+        },
+        _update: function() {
+            const m = this._map;
+            if (!m) return;
+
+            const zoom = m.getZoom();
+
+            let mpp = null;
+            try {
+                const size = m.getSize();
+                const y = size.y / 2;
+                const p1 = m.containerPointToLatLng([0, y]);
+                const p2 = m.containerPointToLatLng([100, y]);
+                mpp = p1.distanceTo(p2) / 100;
+            } catch (e) {
+                mpp = null;
+            }
+
+            if (!mpp || !isFinite(mpp) || mpp <= 0) {
+                this._div.innerHTML = `
+                    <div class="scale-bar-row">
+                        <span class="zoom-badge">z${zoom}</span>
+                        <span class="scale-bar-label">—</span>
+                    </div>
+                `;
+                return;
+            }
+
+            const targetPx = 100;
+            const targetMeters = mpp * targetPx;
+
+            const magnitude = Math.pow(10, Math.floor(Math.log10(targetMeters)));
+            let niceMeters = magnitude;
+            const candidates = [1, 2, 5, 10];
+            for (const n of candidates) {
+                const v = n * magnitude;
+                if (v <= targetMeters) niceMeters = v;
+            }
+            if (niceMeters <= 0) niceMeters = magnitude;
+
+            const pxLen = Math.max(30, Math.min(180, niceMeters / mpp));
+
+            let label;
+            if (niceMeters >= 1000) {
+                label = (niceMeters / 1000) + ' км';
+            } else if (niceMeters >= 1) {
+                label = niceMeters + ' м';
+            } else {
+                label = (niceMeters * 100).toFixed(0) + ' см';
+            }
+
+            this._div.innerHTML = `
+                <div class="scale-bar-row">
+                    <span class="zoom-badge">z${zoom}</span>
+                    <div class="scale-bar-graphic">
+                        <div class="scale-bar-line" style="width:${pxLen}px;"></div>
+                        <div class="scale-bar-label">${label}</div>
+                    </div>
+                </div>
+            `;
+        }
+    });
+
+    const ctrl = new ScaleBarControl();
+    ctrl.addTo(map);
+
+    if (isMap1) map._scaleCtrl1 = ctrl;
+    else        map._scaleCtrl2 = ctrl;
+}
+
+
+// ============================================================
+// РАВНЫЙ МАСШТАБ (одинаковый м/пиксель на обеих картах)
+// ============================================================
+function equalScale() {
+    if (!map1 || !map2) return;
+
+    function metersPerPixel(map) {
+        try {
+            const size = map.getSize();
+            const y = size.y / 2;
+            const p1 = map.containerPointToLatLng([0, y]);
+            const p2 = map.containerPointToLatLng([100, y]);
+            const d = p1.distanceTo(p2) / 100;
+            return isFinite(d) && d > 0 ? d : null;
+        } catch (e) {
+            return null;
+        }
+    }
+
+    const mpp1 = metersPerPixel(map1);
+    const mpp2 = metersPerPixel(map2);
+
+    if (!mpp1 || !mpp2) {
+        showToast('Не удалось определить масштаб', 2000);
         return;
     }
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '© OpenStreetMap',
-        maxZoom: 19
-    }).addTo(map);
+    const targetMpp = (mpp1 + mpp2) / 2;
+
+    function fitZoomToMpp(map, currentMpp) {
+        const idealDelta = -Math.log2(targetMpp / currentMpp);
+        const zoomDelta = Math.round(idealDelta);
+
+        let newZoom = map.getZoom() + zoomDelta;
+        const minZ = map.getMinZoom ? map.getMinZoom() : 0;
+        const maxZ = map.getMaxZoom ? map.getMaxZoom() : 22;
+        newZoom = Math.max(minZ, Math.min(maxZ, newZoom));
+
+        map.setZoom(newZoom);
+
+        const newMpp = metersPerPixel(map);
+        return { newZoom, newMpp };
+    }
+
+    const r1 = fitZoomToMpp(map1, mpp1);
+    const r2 = fitZoomToMpp(map2, mpp2);
+
+    console.log('[equalScale] targetMpp =', targetMpp,
+                '→ map1 z' + r1.newZoom, '(' + r1.newMpp.toFixed(2) + ' м/п)',
+                'map2 z' + r2.newZoom, '(' + r2.newMpp.toFixed(2) + ' м/п)');
+}
+
+
+// ============================================================
+// ПОКАЗАТЬ ВЕСЬ МИР (без fitBounds — перебор зумов)
+// ============================================================
+function showWorldView() {
+    if (!map1 || !map2) return;
+
+    function fitWorld(map) {
+        // Перебираем зумы от 6 вниз до 0 и находим максимальный,
+        // при котором весь мир ещё влезает в кадр.
+        for (let z = 6; z >= 0; z--) {
+            try {
+                map.setView([0, 0], z, { animate: false });
+                const b = map.getBounds();
+                const sw = b.getSouthWest();
+                const ne = b.getNorthEast();
+                if (sw.lng <= -170 && ne.lng >= 170 &&
+                    sw.lat <= -80 && ne.lat >= 80) {
+                    return z;
+                }
+            } catch (e) {
+                // пропускаем
+            }
+        }
+        // fallback
+        map.setView([0, 0], 2, { animate: false });
+        return 2;
+    }
+
+    try {
+        const z1 = fitWorld(map1);
+        console.log('[showWorldView] map1 zoom =', z1);
+    } catch (e) {
+        console.warn('[showWorldView] map1:', e);
+        try { map1.setView([0, 0], 2); } catch (_) {}
+    }
+
+    try {
+        const z2 = fitWorld(map2);
+        console.log('[showWorldView] map2 zoom =', z2);
+    } catch (e) {
+        console.warn('[showWorldView] map2:', e);
+        try { map2.setView([0, 0], 2); } catch (_) {}
+    }
+
+    showToast('Показан весь мир', 1500);
+}
+
+
+// ============================================================
+// ХЕЛПЕР: перерисовать полигон на обеих картах
+// ============================================================
+function redrawBothPolygons(coords, style1, style2) {
+    if (!coords || coords.length < 3) return;
+
+    if (map1 && polygon) {
+        map1.removeLayer(polygon);
+        polygon = L.polygon(coords, style1 || {
+            color: '#306bff', weight: 3,
+            fillColor: '#84a7fe', fillOpacity: 0.3
+        }).addTo(map1);
+        polygon.bindPopup('Полигон');
+        polygon.on('click', updateInfo);
+    }
+
+    if (map2 && polygon2) {
+        map2.removeLayer(polygon2);
+        polygon2 = L.polygon(coords, style2 || {
+            color: '#ef4444', weight: 3,
+            fillColor: '#fca5a5', fillOpacity: 0.3
+        }).addTo(map2);
+    }
 }
 
 
@@ -319,7 +624,7 @@ function loadPolygon(index) {
         fillColor: '#fca5a5', fillOpacity: 0.3
     }).addTo(map2);
 
-    createDragMarkers();
+    if (isEditing) createDragMarkers();
     updateInfo();
     setTimeout(centerOnPolygon, 100);
     showToast(`Полигон #${polyData.id} загружен`, 2000);
@@ -352,25 +657,17 @@ function finishEditing() {
     }
 
     isEditing = false;
-    dragMarkers.forEach(m => map1.removeLayer(m));
+
+    dragMarkers.forEach(m => { try { map1.removeLayer(m); } catch(e){} });
     dragMarkers = [];
 
     const coords = polygon.getLatLngs()[0];
-    map1.removeLayer(polygon);
-    polygon = L.polygon(coords, {
-        color: '#306bff', weight: 3,
-        fillColor: '#84a7fe', fillOpacity: 0.3
-    }).addTo(map1);
-    polygon.bindPopup('Полигон (редактирование завершено)');
-    polygon.on('click', updateInfo);
+    redrawBothPolygons(coords,
+        { color: '#306bff', weight: 3, fillColor: '#84a7fe', fillOpacity: 0.3 },
+        { color: '#ef4444', weight: 3, fillColor: '#fca5a5', fillOpacity: 0.3 }
+    );
 
-    if (polygon2) {
-        map2.removeLayer(polygon2);
-        polygon2 = L.polygon(coords, {
-            color: '#ef4444', weight: 3,
-            fillColor: '#fca5a5', fillOpacity: 0.3
-        }).addTo(map2);
-    }
+    if (polygon) polygon.bindPopup('Полигон (редактирование завершено)');
 
     map1.getContainer().style.cursor = '';
     updateInfo();
@@ -423,16 +720,23 @@ function updateInfo() {
 
     pointCountEl.textContent = coords.length;
 
-    const center = polygon.getBounds().getCenter();
+    let center;
+    try {
+        center = polygon.getBounds().getCenter();
+    } catch (e) {
+        centerEl.textContent = '—';
+        return;
+    }
 
-    // Координаты в текущей проекции
     let projStr = '';
     try {
         if (map1 && map1.options && map1.options.crs && map1.options.crs.projection) {
             const projXY = map1.options.crs.projection.project(center);
-            const def = ProjectionDB.get(currentProjectionCode1);
-            const units = def ? (def.Dlina || '') : '';
-            projStr = ` (${projXY.x.toFixed(2)}, ${projXY.y.toFixed(2)} ${units})`;
+            if (projXY && isFinite(projXY.x) && isFinite(projXY.y)) {
+                const def = ProjectionDB.get(currentProjectionCode1);
+                const units = def ? (def.Dlina || '') : '';
+                projStr = ` (${projXY.x.toFixed(2)}, ${projXY.y.toFixed(2)} ${units})`;
+            }
         }
     } catch (e) {
         // ignore
@@ -447,21 +751,25 @@ function updateInfo() {
 // ЦЕНТРИРОВАНИЕ И ОЧИСТКА
 // ============================================================
 function centerOnPolygon() {
-    if (polygon) {
-        map1.fitBounds(polygon.getBounds(), { padding: [50, 50], maxZoom: 18 });
-        map2.fitBounds(polygon.getBounds(), { padding: [50, 50], maxZoom: 18 });
+    if (!polygon) return;
+    try {
+        const bounds = polygon.getBounds();
+        map1.fitBounds(bounds, { padding: [50, 50], maxZoom: 18 });
+        map2.fitBounds(bounds, { padding: [50, 50], maxZoom: 18 });
+    } catch (e) {
+        console.warn('centerOnPolygon:', e);
     }
 }
 
 function clearDrawing() {
-    markers.forEach(m => map1.removeLayer(m));
+    markers.forEach(m => { try { map1.removeLayer(m); } catch(e){} });
     markers = [];
 
-    dragMarkers.forEach(m => map1.removeLayer(m));
+    dragMarkers.forEach(m => { try { map1.removeLayer(m); } catch(e){} });
     dragMarkers = [];
 
     if (tempPolyline) {
-        map1.removeLayer(tempPolyline);
+        try { map1.removeLayer(tempPolyline); } catch(e){}
         tempPolyline = null;
     }
 
@@ -469,9 +777,11 @@ function clearDrawing() {
     isDrawing = false;
     isDragging = false;
     isEditing = false;
-    map1.getContainer().style.cursor = '';
-    map1.off('click', addPointOnClick);
-    map1.off('dblclick', finishPolygon);
+    if (map1) map1.getContainer().style.cursor = '';
+    if (map1) {
+        map1.off('click', addPointOnClick);
+        map1.off('dblclick', finishPolygon);
+    }
 }
 
 
@@ -481,7 +791,7 @@ function clearDrawing() {
 function createDragMarkers() {
     if (!isEditing) return;
 
-    dragMarkers.forEach(m => map1.removeLayer(m));
+    dragMarkers.forEach(m => { try { map1.removeLayer(m); } catch(e){} });
     dragMarkers = [];
 
     if (!polygon) return;
@@ -489,7 +799,15 @@ function createDragMarkers() {
     const coords = polygon.getLatLngs()[0];
     if (!coords || coords.length < 3) return;
 
-    const points = coords;
+    const points = coords.slice();
+    if (points.length > 1) {
+        const first = points[0];
+        const last = points[points.length - 1];
+        if (Math.abs(first.lat - last.lat) < 1e-9 &&
+            Math.abs(first.lng - last.lng) < 1e-9) {
+            points.pop();
+        }
+    }
 
     for (let i = 0; i < points.length; i++) {
         const lat = points[i].lat;
@@ -508,28 +826,41 @@ function createDragMarkers() {
 
         marker.on('dragstart', function() {
             isDragging = true;
-            this._icon.classList.add('dragging');
+            if (this._icon) this._icon.classList.add('dragging');
             map1.getContainer().style.cursor = 'grabbing';
         });
 
         marker.on('drag', function(e) {
             const latlng = e.target.getLatLng();
             const idx = this._pointIndex;
-            const coords = polygon.getLatLngs()[0];
-            coords[idx].lat = latlng.lat;
-            coords[idx].lng = latlng.lng;
+            const currentCoords = polygon.getLatLngs()[0];
 
-            map1.removeLayer(polygon);
-            polygon = L.polygon(coords, {
-                color: '#f59e0b', weight: 3,
-                fillColor: '#84a7fe', fillOpacity: 0.3
-            }).addTo(map1);
-            polygon.bindPopup('Полигон (редактируется)');
-            polygon.on('click', updateInfo);
+            currentCoords[idx].lat = latlng.lat;
+            currentCoords[idx].lng = latlng.lng;
 
-            if (polygon2) {
+            if (currentCoords.length > 1) {
+                const first = currentCoords[0];
+                const last = currentCoords[currentCoords.length - 1];
+                if (Math.abs(first.lat - last.lat) < 1e-9 &&
+                    Math.abs(first.lng - last.lng) < 1e-9) {
+                    last.lat = first.lat;
+                    last.lng = first.lng;
+                }
+            }
+
+            if (map1 && polygon) {
+                map1.removeLayer(polygon);
+                polygon = L.polygon(currentCoords, {
+                    color: '#f59e0b', weight: 3,
+                    fillColor: '#84a7fe', fillOpacity: 0.3
+                }).addTo(map1);
+                polygon.bindPopup('Полигон (редактируется)');
+                polygon.on('click', updateInfo);
+            }
+
+            if (map2 && polygon2) {
                 map2.removeLayer(polygon2);
-                polygon2 = L.polygon(coords, {
+                polygon2 = L.polygon(currentCoords, {
                     color: '#ef4444', weight: 3,
                     fillColor: '#fca5a5', fillOpacity: 0.3
                 }).addTo(map2);
@@ -540,8 +871,9 @@ function createDragMarkers() {
 
         marker.on('dragend', function() {
             isDragging = false;
-            this._icon.classList.remove('dragging');
+            if (this._icon) this._icon.classList.remove('dragging');
             map1.getContainer().style.cursor = '';
+
             createDragMarkers();
             updateInfo();
             showToast('Точка перемещена', 1500);
@@ -555,10 +887,13 @@ function createDragMarkers() {
                 html: `<div>${i + 1}</div>`,
                 iconSize: [20, 20],
                 iconAnchor: [10, 10]
-            })
+            }),
+            interactive: false
         }).addTo(map1);
         dragMarkers.push(numMarker);
     }
+
+    console.log('[createDragMarkers] маркеров:', dragMarkers.length / 2);
 }
 
 
@@ -657,26 +992,74 @@ function finishPolygon() {
 function switchProjection(map, newCode, isMap1) {
     console.log('[switchProjection]', isMap1 ? 'map1' : 'map2', '→', newCode);
 
-    const oldCenter = map.getCenter();
-    const oldZoom = map.getZoom();
-
+    const def = ProjectionDB.get(newCode);
     const newCRS = ProjectionDB.createCRS(newCode);
-    console.log('  newCRS:', newCRS ? newCRS.code : 'null');
+
+    let oldCenter = null;
+    let oldZoom = 7;
+    try {
+        oldCenter = map.getCenter();
+        oldZoom = map.getZoom();
+    } catch (e) {
+        console.warn('[switchProjection] не удалось получить старый центр:', e);
+    }
 
     const containerId = isMap1 ? 'map1' : 'map2';
-    map.remove();
+
+    const oldLayers = isMap1 ? graticuleLayers1 : graticuleLayers2;
+    oldLayers.length = 0;
+
+    if (isMap1) {
+        polygon = null;
+        dragMarkers = [];
+    } else {
+        polygon2 = null;
+    }
+
+    try {
+        map.remove();
+    } catch (e) {
+        console.warn('[switchProjection] map.remove():', e);
+    }
+
     const newMap = createMapWithCRS(containerId, newCRS);
 
-    const def = ProjectionDB.get(newCode);
-    addTileLayer(newMap, def);
-
-    // Центр: по bbox новой проекции, если есть
-    let center = [oldCenter.lat, oldCenter.lng];
+    let center = [59.5, 30];
     if (def && Array.isArray(def.Granica) && def.Granica.length === 4) {
-        const bbox = def.Granica;
-        center = [(bbox[1] + bbox[3]) / 2, (bbox[0] + bbox[2]) / 2];
+        const nums = def.Granica.map(Number);
+        if (nums.every(isFinite)) {
+            center = [(nums[1] + nums[3]) / 2, (nums[0] + nums[2]) / 2];
+        }
+    } else if (oldCenter && isFinite(oldCenter.lat) && isFinite(oldCenter.lng)) {
+        center = [oldCenter.lat, oldCenter.lng];
     }
-    newMap.setView(center, oldZoom);
+
+    try {
+        newMap.setView(center, oldZoom);
+    } catch (e) {
+        console.error('[switchProjection] setView упал, откат на EPSG:3857:', e);
+        try { newMap.remove(); } catch (_) {}
+
+        const fallback = createMapWithCRS(containerId, L.CRS.EPSG3857);
+        addGraticule(fallback, ProjectionDB.get('EPSG:3857'), isMap1);
+        addScaleDisplay(fallback, ProjectionDB.get('EPSG:3857'), isMap1);
+        fallback.setView([59.5, 30], 7);
+
+        if (isMap1) {
+            map1 = fallback;
+            currentCRS1 = L.CRS.EPSG3857;
+            currentProjectionCode1 = 'EPSG:3857';
+        } else {
+            map2 = fallback;
+            currentCRS2 = L.CRS.EPSG3857;
+            currentProjectionCode2 = 'EPSG:3857';
+        }
+        showToast('Проекция не поддерживается, откат на EPSG:3857', 3000);
+        return;
+    }
+
+    addGraticule(newMap, def, isMap1);
+    addScaleDisplay(newMap, def, isMap1);
 
     if (isMap1) {
         map1 = newMap;
@@ -684,6 +1067,7 @@ function switchProjection(map, newCode, isMap1) {
         currentProjectionCode1 = newCode;
         redrawPolygonOnMap1();
         attachMap1Handlers();
+        if (isEditing) createDragMarkers();
     } else {
         map2 = newMap;
         currentCRS2 = newCRS;
@@ -695,27 +1079,31 @@ function switchProjection(map, newCode, isMap1) {
 }
 
 function redrawPolygonOnMap1() {
-    if (!polygon) return;
-    const coords = polygon.getLatLngs()[0].map(p => [p.lat, p.lng]);
-    map1.removeLayer(polygon);
+    let coords = null;
+    if (polygon) {
+        coords = polygon.getLatLngs()[0].map(p => [p.lat, p.lng]);
+    } else if (polygon2) {
+        coords = polygon2.getLatLngs()[0].map(p => [p.lat, p.lng]);
+    }
+    if (!coords) return;
+
     polygon = L.polygon(coords, {
         color: '#306bff', weight: 3,
         fillColor: '#84a7fe', fillOpacity: 0.3
     }).addTo(map1);
     polygon.on('click', updateInfo);
-    if (isEditing) createDragMarkers();
     updateInfo();
 }
 
 function redrawPolygonOnMap2() {
-    if (!polygon2 && !polygon) return;
-    let coords;
+    let coords = null;
     if (polygon) {
         coords = polygon.getLatLngs()[0].map(p => [p.lat, p.lng]);
-    } else {
+    } else if (polygon2) {
         coords = polygon2.getLatLngs()[0].map(p => [p.lat, p.lng]);
     }
-    if (polygon2) map2.removeLayer(polygon2);
+    if (!coords) return;
+
     polygon2 = L.polygon(coords, {
         color: '#ef4444', weight: 3,
         fillColor: '#fca5a5', fillOpacity: 0.3
@@ -775,9 +1163,40 @@ function setupProjectionPanel(opts) {
     fillSelect(opts.select, all, opts.getCurrentCode());
     renderInfo(opts.info, ProjectionDB.get(opts.getCurrentCode()));
 
+    function applyCode(code) {
+        if (!code) return;
+        opts.select.value = code;
+        const def = ProjectionDB.get(code);
+        renderInfo(opts.info, def);
+        opts.onChange(code);
+    }
+
     opts.search.addEventListener('input', function() {
-        const filtered = ProjectionDB.search(this.value);
+        const q = this.value.trim();
+        const filtered = ProjectionDB.search(q);
         fillSelect(opts.select, filtered, opts.getCurrentCode());
+
+        if (q === '') {
+            fillSelect(opts.select, all, opts.getCurrentCode());
+            renderInfo(opts.info, ProjectionDB.get(opts.getCurrentCode()));
+            return;
+        }
+        if (filtered.length === 1) {
+            applyCode(filtered[0].fullCode);
+        }
+    });
+
+    opts.search.addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+            e.preventDefault();
+            const q = this.value.trim();
+            if (!q) return;
+            const filtered = ProjectionDB.search(q);
+            if (filtered.length > 0) {
+                applyCode(filtered[0].fullCode);
+                this.blur();
+            }
+        }
     });
 
     opts.select.addEventListener('change', function() {
@@ -889,6 +1308,9 @@ function attachUIHandlers() {
     document.getElementById('editPolygonBtn').addEventListener('click', startEditing);
     document.getElementById('finishEditBtn').addEventListener('click', finishEditing);
 
+    document.getElementById('equalScaleBtn').addEventListener('click', equalScale);
+    document.getElementById('worldViewBtn').addEventListener('click', showWorldView);
+
     document.getElementById('clearAllBtn').addEventListener('click', function() {
         if (savedPolygons.length === 0) {
             showToast('Нет сохранённых полигонов');
@@ -916,19 +1338,20 @@ function attachUIHandlers() {
 // ============================================================
 (async function bootstrap() {
     try {
-        // 1. Загружаем базу проекций
         await ProjectionDB.load('data.json');
 
-        // 2. Создаём карты
         currentCRS1 = ProjectionDB.createCRS(currentProjectionCode1);
         currentCRS2 = ProjectionDB.createCRS(currentProjectionCode2);
 
         map1 = createMapWithCRS('map1', currentCRS1);
         map2 = createMapWithCRS('map2', currentCRS2);
-        addTileLayer(map1, ProjectionDB.get(currentProjectionCode1));
-        addTileLayer(map2, ProjectionDB.get(currentProjectionCode2));
 
-        // 3. Настраиваем панели
+        addGraticule(map1, ProjectionDB.get(currentProjectionCode1), true);
+        addGraticule(map2, ProjectionDB.get(currentProjectionCode2), false);
+
+        addScaleDisplay(map1, ProjectionDB.get(currentProjectionCode1), true);
+        addScaleDisplay(map2, ProjectionDB.get(currentProjectionCode2), false);
+
         setupProjectionPanel({
             select: document.getElementById('projection1'),
             search: document.getElementById('projectionSearch1'),
@@ -945,10 +1368,8 @@ function attachUIHandlers() {
             onChange: (code) => switchProjection(map2, code, false)
         });
 
-        // 4. Обработчики кнопок
         attachUIHandlers();
 
-        // 5. Дефолтный полигон
         const defaultCoords = [[59, 31], [59, 29], [60, 29], [60, 31], [59, 31]];
         polygon = L.polygon(defaultCoords, {
             color: '#306bff', weight: 3,
@@ -964,7 +1385,6 @@ function attachUIHandlers() {
         updateInfo();
         setTimeout(centerOnPolygon, 300);
 
-        // 6. Загружаем сохранённые
         loadSavedPolygons();
 
         console.log('[bootstrap] приложение запущено');
